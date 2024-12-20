@@ -1,7 +1,6 @@
-
 # swift-environment-variables
 
-A type-safe environment variable management system for Swift applications, built with [Dependencies](https://github.com/pointfreeco/swift-dependencies).
+A type-safe environment variable management system for Swift applications.
 
 ![Development Status](https://img.shields.io/badge/status-active--development-blue.svg)
 
