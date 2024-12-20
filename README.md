@@ -18,6 +18,62 @@ This package is currently in active development and is subject to frequent chang
 
 ## Basic Usage
 
+### Using with Dependencies
+
+To use environment variables with [Dependencies](https://github.com/pointfreeco/swift-dependencies), conform to `DependencyKey`:
+
+```swift
+extension EnvironmentVariables: @retroactive DependencyKey {
+    public static var liveValue: Self {
+        let localDevelopment: URL? = {
+            #if DEBUG
+                return URL.projectRoot.appendingPathComponent(".env.development")
+            #else
+                return nil
+            #endif
+        }()
+        
+        return try! EnvironmentVariables.live(
+            localDevelopment: localDevelopment
+        )
+    }
+}
+
+// Helper for finding the project root
+extension URL {
+    public static var projectRoot: URL {
+        .init(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+    }
+}
+```
+
+This setup:
+- Uses `@retroactive` to conform to `DependencyKey`
+- Automatically loads `.env.development` in DEBUG builds
+- Uses process environment variables in production
+
+Access environment variables using the `@Dependency` property wrapper:
+
+```swift
+import Dependencies
+
+struct MyFeature {
+    @Dependency(\.envVars) var env
+    
+    func configure() throws {
+        guard let apiKey = env["API_KEY"] else {
+            throw ConfigError.missingApiKey
+        }
+        // Use apiKey...
+    }
+}
+```
+
+## Use without Dependencies
+
 ```swift
 import EnvironmentVariables
 
@@ -36,27 +92,11 @@ let apiKey: String? = env["API_KEY"]
 ```swift
 // Load from a local JSON file for development
 let env = try EnvVars.live(
-    localDevelopment: URL(fileURLWithPath: "config.local.json"),
+    localDevelopment: URL(fileURLWithPath: ".env.development"),
     requiredKeys: ["APP_SECRET"]
 )
 ```
 
-### Dependencies Integration
-
-```swift
-import Dependencies
-
-struct MyFeature {
-    @Dependency(\.envVars) var env
-    
-    func configure() throws {
-        guard let apiKey = env["API_KEY"] else {
-            throw ConfigError.missingApiKey
-        }
-        // Use apiKey...
-    }
-}
-```
 
 ## Adding Type-Safe Property Access
 
