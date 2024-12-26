@@ -12,14 +12,10 @@ import Logging
 // MARK: - Test Support
 extension EnvironmentVariables: TestDependencyKey {
     public static var testValue: EnvironmentVariables {
-        do {
-            return try EnvironmentVariables.live(localDevelopment: URL.projectRoot.appendingPathComponent(".env.example"), requiredKeys: [], decoder: .init())
-        } catch {
-            print(error)
-            fatalError()
-        }
+        try! .init(dictionary: [:], requiredKeys: [])
     }
 }
+
 
 
 

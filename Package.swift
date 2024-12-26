@@ -15,6 +15,7 @@ extension Target.Dependency {
 extension Target.Dependency {
     static var dependencies: Self { .product(name: "Dependencies", package: "swift-dependencies") }
     static var dependenciesMacros: Self { .product(name: "DependenciesMacros", package: "swift-dependencies") }
+    static var dependenciesTestSupport: Self { .product(name: "DependenciesTestSupport", package: "swift-dependencies") }
     static var logging: Self { .product(name: "Logging", package: "swift-log") }
 }
 
@@ -42,7 +43,7 @@ let package = Package(
         ),
         .testTarget(
             name: .environmentVariables + " Tests",
-            dependencies: [.environmentVariables]
+            dependencies: [.environmentVariables, .dependenciesTestSupport]
         )
     ],
     swiftLanguageModes: [.v6]

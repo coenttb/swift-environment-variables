@@ -107,20 +107,6 @@ extension EnvironmentVariables {
 
 
 
-extension URL {
-    static var projectRoot: URL {
-        let url: URL = .init(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-        
-        print(url)
-        
-        return url
-    }
-}
-
-
 // MARK: - Dependency Integration
 extension DependencyValues {
     public var envVars: EnvironmentVariables {
