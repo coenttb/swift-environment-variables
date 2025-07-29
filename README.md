@@ -1,11 +1,10 @@
-
 # swift-environment-variables
 
-A type-safe environment variable management system for Swift applications, built with [Dependencies](https://github.com/pointfreeco/swift-dependencies).
+A type-safe environment variable management system for Swift applications.
 
-![Development Status](https://img.shields.io/badge/status-active--development-blue.svg)
-
-This package is currently in active development and is subject to frequent changes. Features and APIs may change without prior notice until a stable release is available.
+![Version](https://img.shields.io/badge/version-0.0.1-green.svg)
+![Swift](https://img.shields.io/badge/swift-6.0-orange.svg)
+![Platforms](https://img.shields.io/badge/platforms-iOS%20%7C%20macOS%20%7C%20tvOS%20%7C%20watchOS-lightgrey.svg)
 
 ## Features
 
@@ -17,32 +16,46 @@ This package is currently in active development and is subject to frequent chang
 * **Error handling**: Comprehensive error handling with custom error types
 * **Logging integration**: Built-in logging support using Swift's Logger
 
-## Basic Usage
+## Quick Start
+
+### Using with Dependencies
+
+To use environment variables with [Dependencies](https://github.com/pointfreeco/swift-dependencies), conform to `DependencyKey`:
 
 ```swift
-import EnvironmentVariables
+extension EnvironmentVariables: @retroactive DependencyKey {
+    public static var liveValue: Self {
+        let localDevelopment: URL? = {
+            #if DEBUG
+                return URL.projectRoot.appendingPathComponent(".env.development")
+            #else
+                return nil
+            #endif
+        }()
+        
+        return try! EnvironmentVariables.live(
+            localEnvFile: localDevelopment
+        )
+    }
+}
 
-// Initialize with process environment variables
-let env = try EnvVars.live(requiredKeys: ["APP_SECRET", "DATABASE_URL"])
-
-// Access values with type safety
-let port: Int? = env.int("PORT")
-let isDevelopment: Bool? = env.bool("DEVELOPMENT")
-let databaseUrl: URL? = env.url("DATABASE_URL")
-let apiKey: String? = env["API_KEY"]
+// Helper for finding the project root
+extension URL {
+    public static var projectRoot: URL {
+        .init(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+    }
+}
 ```
 
-### Local Development Support
+This setup:
+- Uses `@retroactive` to conform to `DependencyKey`
+- Automatically loads `.env.development` in DEBUG builds
+- Uses process environment variables in production
 
-```swift
-// Load from a local JSON file for development
-let env = try EnvVars.live(
-    localDevelopment: URL(fileURLWithPath: "config.local.json"),
-    requiredKeys: ["APP_SECRET"]
-)
-```
-
-### Dependencies Integration
+Access environment variables using the `@Dependency` property wrapper:
 
 ```swift
 import Dependencies
@@ -59,15 +72,54 @@ struct MyFeature {
 }
 ```
 
-## Adding Type-Safe Property Access
-
-While dictionary-style access (`env["KEY"]`) is always available, you can add strongly-typed property access by extending `EnvVars`:
+### Standalone Usage
 
 ```swift
-extension EnvVars {
-    public var appSecret: AppSecret {
-        get { AppSecret(self["APP_SECRET"]!)! }
-        set { self["APP_SECRET"] = newValue.rawValue }
+import EnvironmentVariables
+
+// Initialize with process environment variables
+let env = try EnvironmentVariables.live(requiredKeys: ["APP_SECRET", "DATABASE_URL"])
+
+// Access values with type safety
+let port: Int? = env.int("PORT")
+let isDevelopment: Bool? = env.bool("DEVELOPMENT")
+let databaseUrl: URL? = env.url("DATABASE_URL")
+let apiKey: String? = env["API_KEY"]
+```
+
+### Local Development Support
+
+Create a `.env.development` JSON file for local development:
+
+```json
+{
+    "API_KEY": "dev-api-key",
+    "DATABASE_URL": "sqlite:///dev.db",
+    "DEBUG": "true"
+}
+```
+
+Then load it in your application:
+
+```swift
+let env = try EnvironmentVariables.live(
+    localEnvFile: URL(fileURLWithPath: ".env.development"),
+    requiredKeys: ["API_KEY"]
+)
+```
+
+
+## Advanced Usage
+
+### Adding Type-Safe Property Access
+
+While dictionary-style access (`env["KEY"]`) is always available, you can add strongly-typed property access by extending `EnvironmentVariables`:
+
+```swift
+extension EnvironmentVariables {
+    public var appSecret: String {
+        get { self["APP_SECRET"]! }
+        set { self["APP_SECRET"] = newValue }
     }
     
     public var baseUrl: URL {
@@ -87,14 +139,16 @@ extension EnvVars {
 For optional environment variables, use optional types:
 
 ```swift
-extension EnvVars {
+import Logging
+
+extension EnvironmentVariables {
     public var logLevel: Logger.Level? {
         get { self["LOG_LEVEL"].flatMap { Logger.Level(rawValue: $0) } }
         set { self["LOG_LEVEL"] = newValue?.rawValue }
     }
     
     public var httpsRedirect: Bool? {
-        get { self["HTTPS_REDIRECT"].map { $0 == "true" } }
+        get { self.bool("HTTPS_REDIRECT") }
         set { self["HTTPS_REDIRECT"] = newValue.map { $0 ? "true" : "false" } }
     }
 }
@@ -105,7 +159,7 @@ extension EnvVars {
 For environment variables that contain comma-separated values:
 
 ```swift
-extension EnvVars {
+extension EnvironmentVariables {
     public var allowedHosts: [String]? {
         get { 
             self["ALLOWED_HOSTS"]?
@@ -135,15 +189,14 @@ For a Swift Package Manager project, add the following to your `Package.swift` f
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/coenttb/swift-environment-variables", branch: "main")
+    .package(url: "https://github.com/coenttb/swift-environment-variables", from: "0.0.1")
 ]
 ```
 
 ## Related projects
 
 * [coenttb/swift-web](https://www.github.com/coenttb/swift-web): Modular tools to simplify web development in Swift
-* [coenttb/coenttb-web](https://www.github.com/coenttb/coenttb-web): A collection of features for your Swift server
-* [coenttb/coenttb-com-server](https://www.github.com/coenttb/coenttb-com-server): The backend server for coenttb.com
+* [coenttb/coenttb-com-server](https://www.github.com/coenttb/coenttb-com-server): The backend server for coenttb.com that uses EnvironmentVariables.
 
 ## Feedback is much appreciated!
 
@@ -156,6 +209,9 @@ Got thoughts? Found something you love? Something you hate? Let me know! Your fe
 > [Follow me on X](http://x.com/coenttb)
 > 
 > [Link on Linkedin](https://www.linkedin.com/in/tenthijeboonkkamp)
+
+## Acknowledgements
+This project builds upon foundational work by Point-Free (Brandon Williams and Stephen Celis). This package is inspired by their approach on `pointfreeco`.
 
 ## License
 

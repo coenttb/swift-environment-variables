@@ -1,4 +1,4 @@
-// swift-tools-version:6.0
+// swift-tools-version:5.9
 
 import Foundation
 import PackageDescription
@@ -25,22 +25,22 @@ let package = Package(
       .iOS(.v13),
       .macOS(.v10_15),
       .tvOS(.v13),
-      .watchOS(.v6)
+      .watchOS(.v6),
     ],
     products: [
         .library(name: .envVars, targets: [.environmentVariables]),
-        .library(name: .environmentVariables, targets: [.environmentVariables])
+        .library(name: .environmentVariables, targets: [.environmentVariables]),
     ],
     dependencies: [
         .package(url: "https://github.com/pointfreeco/swift-dependencies", from: "1.9.2"),
-        .package(url: "https://github.com/apple/swift-log", from: "1.6.4")
+        .package(url: "https://github.com/apple/swift-log", from: "1.6.4"),
     ],
     targets: [
         .target(
             name: .environmentVariables,
             dependencies: [
                 .dependencies,
-                .logging
+                .logging,
             ]
         ),
         .testTarget(
@@ -50,7 +50,7 @@ let package = Package(
                 .dependenciesTestSupport
             ]
         )
-    ],
+    ]
 )
 
 extension String { var tests: Self { self + " Tests" } }
