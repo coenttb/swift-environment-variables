@@ -21,12 +21,12 @@ extension EnvVars {
         get { self["STRING"] }
         set { self["STRING"] = newValue }
     }
-    
+
     package var url: URL? {
         get { self["URL"].flatMap(URL.init(string:)) }
         set { self["URL"] = newValue?.absoluteString }
     }
-    
+
     package var bool: Bool? {
         get { self["BOOL"].map { $0 == "true" } }
         set { self["BOOL"] = newValue.map { $0 ? "true" : "false" } }

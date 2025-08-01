@@ -11,7 +11,7 @@ import Logging
 
 extension EnvironmentVariables {
     private static let logger = Logger(label: "EnvironmentVariables")
-    
+
     /// Configuration for loading environment files.
     ///
     /// This enum defines different strategies for loading environment variables from local files,
@@ -21,7 +21,7 @@ extension EnvironmentVariables {
         ///
         /// Only default values and process environment variables will be used.
         case none
-        
+
         /// Load environment files from a project root directory.
         ///
         /// This approach mimics Vapor's behavior:
@@ -37,7 +37,7 @@ extension EnvironmentVariables {
         /// - `projectRoot/.env` (base configuration)
         /// - `projectRoot/.env.development` (overrides base values)
         case projectRoot(URL, environment: String?)
-        
+
         /// Load a single environment file (legacy approach).
         ///
         /// This maintains backward compatibility with the existing `localEnvFile` parameter.
@@ -54,7 +54,7 @@ extension EnvironmentVariables {
         /// This error wraps the original error that caused the initialization to fail,
         /// such as file system errors when reading local environment files.
         case initializationFailed(underlying: Swift.Error)
-        
+
         /// Thrown when the environment configuration is invalid.
         ///
         /// This error is thrown when there are logical inconsistencies or
@@ -130,7 +130,7 @@ extension EnvironmentVariables {
         let configuration: EnvironmentConfiguration = localEnvFile.map { .singleFile($0) } ?? .none
         return try live(environmentConfiguration: configuration, requiredKeys: requiredKeys, decoder: decoder)
     }
-    
+
     /// Creates a live environment variables instance using the new configuration-based approach.
     ///
     /// This method supports multiple environment loading strategies including Vapor-like project-based
@@ -209,9 +209,15 @@ extension EnvironmentVariables {
         decoder: JSONDecoder
     ) throws -> [String: String] {
         guard let url = url else { return [:] }
+
+        // Check if file exists first - if not, silently return empty dictionary
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            return [:]
+        }
+
         do {
             let data = try Data(contentsOf: url)
-            
+
             // Try JSON format first (existing behavior)
             do {
                 return try decoder.decode([String: String].self, from: data)
@@ -220,11 +226,12 @@ extension EnvironmentVariables {
                 return try parseKeyValueFormat(data)
             }
         } catch {
+            // Actual error reading/parsing the file - worth warning about
             logger.warning("Could not load local environment from \(url.path): \(error.localizedDescription)")
             return [:]
         }
     }
-    
+
     /// Parses environment variables from KEY=VALUE format.
     ///
     /// This method supports the standard .env file format with the following features:
@@ -242,53 +249,53 @@ extension EnvironmentVariables {
         guard let content = String(data: data, encoding: .utf8) else {
             throw LiveError.invalidEnvironment(reason: "File content is not valid UTF-8")
         }
-        
+
         var result: [String: String] = [:]
         let lines = content.components(separatedBy: .newlines)
-        
+
         for (lineNumber, line) in lines.enumerated() {
             let trimmedLine = line.trimmingCharacters(in: .whitespaces)
-            
+
             // Skip empty lines and comments
             if trimmedLine.isEmpty || trimmedLine.hasPrefix("#") {
                 continue
             }
-            
+
             // Find the first = sign
             guard let equalIndex = trimmedLine.firstIndex(of: "=") else {
                 throw LiveError.invalidEnvironment(
                     reason: "Invalid KEY=VALUE format at line \(lineNumber + 1): '\(trimmedLine)'"
                 )
             }
-            
+
             let rawKey = String(trimmedLine[..<equalIndex]).trimmingCharacters(in: .whitespaces)
             let value = String(trimmedLine[trimmedLine.index(after: equalIndex)...])
-            
+
             // Parse key, handling quotes (same logic as values)
             let key = parseValue(rawKey)
-            
+
             // Validate key is not empty
             if key.isEmpty {
                 throw LiveError.invalidEnvironment(
                     reason: "Empty key at line \(lineNumber + 1): '\(trimmedLine)'"
                 )
             }
-            
+
             // Parse value, handling quotes
             let parsedValue = parseValue(value)
             result[key] = parsedValue
         }
-        
+
         return result
     }
-    
+
     /// Parses a value from KEY=VALUE format, handling quoted and unquoted values.
     ///
     /// - Parameter value: The raw value string after the = sign
     /// - Returns: The parsed value with quotes removed and whitespace trimmed
     private static func parseValue(_ value: String) -> String {
         let trimmedValue = value.trimmingCharacters(in: .whitespaces)
-        
+
         // Handle quoted values
         if trimmedValue.count >= 2 {
             if (trimmedValue.hasPrefix("\"") && trimmedValue.hasSuffix("\"")) ||
@@ -298,11 +305,11 @@ extension EnvironmentVariables {
                 return String(trimmedValue[startIndex..<endIndex])
             }
         }
-        
+
         // Return unquoted value as-is (already trimmed)
         return trimmedValue
     }
-    
+
     /// Loads environment variables based on the provided configuration.
     ///
     /// This method orchestrates the loading of environment variables from different sources
@@ -320,10 +327,10 @@ extension EnvironmentVariables {
         switch configuration {
         case .none:
             return [:]
-            
+
         case .singleFile(let url):
             return try getLocalEnvironment(from: url, decoder: decoder)
-            
+
         case .projectRoot(let projectRoot, let environment):
             return try loadProjectEnvironment(
                 projectRoot: projectRoot,
@@ -332,7 +339,7 @@ extension EnvironmentVariables {
             )
         }
     }
-    
+
     /// Loads environment variables from project root using Vapor-like approach.
     ///
     /// This method implements the Vapor environment loading strategy:
@@ -354,19 +361,19 @@ extension EnvironmentVariables {
         decoder: JSONDecoder
     ) throws -> [String: String] {
         var result: [String: String] = [:]
-        
+
         // Load base .env file
         let baseEnvFile = projectRoot.appendingPathComponent(".env")
         let baseEnv = try getLocalEnvironment(from: baseEnvFile, decoder: decoder)
         result.merge(baseEnv, uniquingKeysWith: { $1 })
-        
+
         // Load environment-specific file if specified
         if let environment = environment {
             let envSpecificFile = projectRoot.appendingPathComponent(".env.\(environment)")
             let envSpecificVars = try getLocalEnvironment(from: envSpecificFile, decoder: decoder)
             result.merge(envSpecificVars, uniquingKeysWith: { $1 })
         }
-        
+
         return result
     }
 }
