@@ -9,8 +9,10 @@ A type-safe environment variable management system for Swift applications.
 ## Features
 
 * **Type-safe environment access**: Access environment variables with type conversion support for Int, Bool, URL, and String
+* **Multiple file format support**: Supports both JSON and standard KEY=VALUE (.env) file formats
+* **Environment-aware loading**: Automatically loads base configuration and environment-specific overrides
+* **Layered configuration**: Clear precedence order from defaults → base files → environment files → process environment
 * **Required keys validation**: Specify and validate required environment variables at runtime
-* **Layered configuration**: Load from process environment, local development files, and defaults with clear precedence
 * **Dependencies integration**: Built-in support for the Dependencies package for clean dependency injection
 * **Test support**: Includes test helpers and mock values for testing
 * **Error handling**: Comprehensive error handling with custom error types
@@ -25,16 +27,17 @@ To use environment variables with [Dependencies](https://github.com/pointfreeco/
 ```swift
 extension EnvironmentVariables: @retroactive DependencyKey {
     public static var liveValue: Self {
-        let localDevelopment: URL? = {
-            #if DEBUG
-                return URL.projectRoot.appendingPathComponent(".env.development")
-            #else
-                return nil
-            #endif
-        }()
+        #if DEBUG
+        let environment = "development"
+        #else
+        let environment: String? = nil
+        #endif
         
         return try! EnvironmentVariables.live(
-            localEnvFile: localDevelopment
+            environmentConfiguration: .projectRoot(
+                URL.projectRoot,
+                environment: environment
+            )
         )
     }
 }
@@ -52,8 +55,9 @@ extension URL {
 
 This setup:
 - Uses `@retroactive` to conform to `DependencyKey`
-- Automatically loads `.env.development` in DEBUG builds
-- Uses process environment variables in production
+- Automatically loads `.env` + `.env.development` in DEBUG builds
+- Loads only `.env` + process environment in production
+- Supports environment-specific configuration overrides
 
 Access environment variables using the `@Dependency` property wrapper:
 
@@ -77,8 +81,14 @@ struct MyFeature {
 ```swift
 import EnvironmentVariables
 
-// Initialize with process environment variables
-let env = try EnvironmentVariables.live(requiredKeys: ["APP_SECRET", "DATABASE_URL"])
+// Initialize with environment-aware configuration
+let env = try EnvironmentVariables.live(
+    environmentConfiguration: .projectRoot(
+        URL(fileURLWithPath: "/path/to/project"),
+        environment: "development"
+    ),
+    requiredKeys: ["APP_SECRET", "DATABASE_URL"]
+)
 
 // Access values with type safety
 let port: Int? = env.int("PORT")
@@ -87,27 +97,132 @@ let databaseUrl: URL? = env.url("DATABASE_URL")
 let apiKey: String? = env["API_KEY"]
 ```
 
-### Local Development Support
+### Environment Configuration System
 
-Create a `.env.development` JSON file for local development:
+The package supports multiple configuration strategies with clear precedence:
 
-```json
-{
-    "API_KEY": "dev-api-key",
-    "DATABASE_URL": "sqlite:///dev.db",
-    "DEBUG": "true"
-}
+#### Project-Based Loading (Recommended)
+
+Create environment files in your project root:
+
+**`.env` (Base configuration):**
+```bash
+# Base configuration for all environments
+APP_NAME=My Application
+DEBUG=false
+DATABASE_HOST=localhost
+DATABASE_PORT=5432
+CACHE_TTL=3600
 ```
 
-Then load it in your application:
+**`.env.development` (Development overrides):**
+```bash
+# Development-specific overrides
+DEBUG=true
+DATABASE_NAME=myapp_dev
+CACHE_TTL=60
+DEV_TOOLS_ENABLED=true
+```
+
+**`.env.production` (Production overrides):**
+```bash
+# Production-specific overrides
+DEBUG=false
+DATABASE_NAME=myapp_prod
+CACHE_TTL=7200
+ENABLE_METRICS=true
+```
+
+#### Loading with Precedence
 
 ```swift
 let env = try EnvironmentVariables.live(
-    localEnvFile: URL(fileURLWithPath: ".env.development"),
-    requiredKeys: ["API_KEY"]
+    environmentConfiguration: .projectRoot(
+        URL(fileURLWithPath: "/path/to/project"),
+        environment: "development"  // Loads .env + .env.development
+    )
 )
 ```
 
+**Precedence Order (lowest to highest):**
+1. Default values (empty by default)
+2. Base `.env` file
+3. Environment-specific file (e.g., `.env.development`)
+4. Process environment variables
+
+#### Single File Loading
+
+For simpler use cases, load a single environment file:
+
+```swift
+let env = try EnvironmentVariables.live(
+    environmentConfiguration: .singleFile(
+        URL(fileURLWithPath: ".env.development")
+    )
+)
+```
+
+#### Supported File Formats
+
+Both **KEY=VALUE** (.env) and **JSON** formats are supported:
+
+**KEY=VALUE format:**
+```bash
+API_KEY=my-secret-key
+DEBUG=true
+DATABASE_URL=postgresql://user:pass@localhost:5432/db
+```
+
+**JSON format:**
+```json
+{
+    "API_KEY": "my-secret-key",
+    "DEBUG": "true",
+    "DATABASE_URL": "postgresql://user:pass@localhost:5432/db"
+}
+```
+
+## Configuration Options
+
+The `EnvironmentConfiguration` enum provides three loading strategies:
+
+### `.none`
+Load only from process environment variables:
+```swift
+let env = try EnvironmentVariables.live(
+    environmentConfiguration: .none
+)
+```
+
+### `.singleFile(URL)`
+Load from a single environment file:
+```swift
+let env = try EnvironmentVariables.live(
+    environmentConfiguration: .singleFile(
+        URL(fileURLWithPath: "/path/to/.env.development")
+    )
+)
+```
+
+### `.projectRoot(URL, environment: String?)`
+Load base configuration with optional environment-specific overrides:
+```swift
+// Load only .env
+let env = try EnvironmentVariables.live(
+    environmentConfiguration: .projectRoot(
+        URL(fileURLWithPath: "/path/to/project"),
+        environment: nil
+    )
+)
+
+// Load .env + .env.staging
+let env = try EnvironmentVariables.live(
+    environmentConfiguration: .projectRoot(
+        URL(fileURLWithPath: "/path/to/project"),
+        environment: "staging"
+    )
+)
+```
 
 ## Advanced Usage
 

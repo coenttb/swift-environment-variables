@@ -9,8 +9,10 @@ EnvironmentVariables provides a robust, type-safe way to manage environment vari
 ### Key Features
 
 - **Type-safe access**: Convert environment variables to `Int`, `Bool`, `URL`, and `String` types
+- **Multiple file formats**: Support for both JSON and KEY=VALUE (.env) file formats
+- **Environment-aware loading**: Automatically load base configuration with environment-specific overrides
+- **Layered configuration**: Clear precedence from defaults → base files → environment files → process environment
 - **Required key validation**: Ensure critical environment variables are present at runtime
-- **Layered configuration**: Load from process environment, local development files, and defaults
 - **Dependencies integration**: First-class support for Point-Free's Dependencies library
 - **Comprehensive testing**: Includes test helpers and mock values
 
@@ -23,8 +25,10 @@ EnvironmentVariables provides a robust, type-safe way to manage environment vari
 
 ### Creating Environment Variables
 
-- ``EnvironmentVariables/live(localEnvFile:requiredKeys:decoder:)``
+- ``EnvironmentVariables/live(environmentConfiguration:requiredKeys:decoder:)``
+- ``EnvironmentVariables/live(localEnvFile:requiredKeys:decoder:)`` (deprecated)
 - ``EnvironmentVariables/init(dictionary:requiredKeys:)``
+- ``EnvironmentVariables/EnvironmentConfiguration``
 
 ### Accessing Values
 

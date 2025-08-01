@@ -2,37 +2,22 @@
 
 Explore advanced patterns and techniques for using EnvironmentVariables in complex applications.
 
-## Custom Environment Sources
+## Environment Configuration Strategies
 
-### Multiple Configuration Files
+### Built-in Multi-File Loading
 
-Load environment variables from multiple configuration files based on the environment:
+Use the built-in environment configuration system for automatic file loading and precedence:
 
 ```swift
 extension EnvironmentVariables {
     public static func configured() throws -> Self {
         let environment = ProcessInfo.processInfo.environment["APP_ENV"] ?? "development"
         
-        let configFiles: [URL] = [
-            URL(fileURLWithPath: ".env"),                    // Base configuration
-            URL(fileURLWithPath: ".env.\(environment)"),     // Environment-specific
-            URL(fileURLWithPath: ".env.local")               // Local overrides (gitignored)
-        ]
-        
-        var merged: [String: String] = [:]
-        
-        for file in configFiles where FileManager.default.fileExists(atPath: file.path) {
-            if let data = try? Data(contentsOf: file),
-               let dict = try? JSONDecoder().decode([String: String].self, from: data) {
-                merged.merge(dict) { _, new in new }
-            }
-        }
-        
-        // Process environment variables take precedence
-        merged.merge(ProcessInfo.processInfo.environment) { _, new in new }
-        
-        return try EnvironmentVariables(
-            dictionary: merged,
+        return try EnvironmentVariables.live(
+            environmentConfiguration: .projectRoot(
+                URL.projectRoot,
+                environment: environment
+            ),
             requiredKeys: Self.requiredKeysForEnvironment(environment)
         )
     }
@@ -48,6 +33,57 @@ extension EnvironmentVariables {
         return keys
     }
 }
+```
+
+### Configuration Options
+
+Choose the appropriate configuration strategy for your needs:
+
+```swift
+// Process environment only
+let env = try EnvironmentVariables.live(
+    environmentConfiguration: .none
+)
+
+// Single file (legacy approach)
+let env = try EnvironmentVariables.live(
+    environmentConfiguration: .singleFile(URL(fileURLWithPath: ".env.local"))
+)
+
+// Project-based with environment-specific overrides
+let env = try EnvironmentVariables.live(
+    environmentConfiguration: .projectRoot(
+        URL.projectRoot,
+        environment: "staging"  // Loads .env + .env.staging
+    )
+)
+```
+
+### Mixed File Formats
+
+The system automatically detects and supports both KEY=VALUE and JSON formats:
+
+```swift
+// Base configuration in KEY=VALUE format (.env)
+APP_NAME=My Application
+DEBUG=false
+DATABASE_HOST=localhost
+
+// Environment-specific in JSON format (.env.testing)
+{
+    "DEBUG": "true",
+    "DATABASE_NAME": "myapp_test",
+    "TEST_MODE": "true"
+}
+
+// Automatic format detection and merging
+let env = try EnvironmentVariables.live(
+    environmentConfiguration: .projectRoot(
+        URL.projectRoot,
+        environment: "testing"
+    )
+)
+// Result: Combines KEY=VALUE base with JSON overrides
 ```
 
 ### Environment Variable Validation

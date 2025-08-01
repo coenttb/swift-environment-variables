@@ -34,8 +34,14 @@ Create an environment variables instance and access values:
 ```swift
 import EnvironmentVariables
 
-// Initialize with required keys
-let env = try EnvironmentVariables.live(requiredKeys: ["API_KEY", "DATABASE_URL"])
+// Initialize with environment-aware configuration
+let env = try EnvironmentVariables.live(
+    environmentConfiguration: .projectRoot(
+        URL(fileURLWithPath: "/path/to/project"),
+        environment: "development"
+    ),
+    requiredKeys: ["API_KEY", "DATABASE_URL"]
+)
 
 // Access values with type safety
 let apiKey: String? = env["API_KEY"]
@@ -44,27 +50,50 @@ let isDebug: Bool? = env.bool("DEBUG_MODE")
 let baseUrl: URL? = env.url("BASE_URL")
 ```
 
-### Local Development Configuration
+### Environment Configuration Files
 
-Create a `.env.development` JSON file for local development:
+The system supports multiple file formats and environment-specific overrides:
 
+**Base configuration `.env`:**
+```bash
+# Base configuration for all environments
+APP_NAME=My Application
+DEBUG=false
+DATABASE_HOST=localhost
+DATABASE_PORT=5432
+```
+
+**Development overrides `.env.development`:**
+```bash
+# Development-specific overrides
+DEBUG=true
+DATABASE_NAME=myapp_dev
+DEV_TOOLS_ENABLED=true
+```
+
+**Or use JSON format `.env.testing`:**
 ```json
 {
-    "API_KEY": "dev-api-key-12345",
-    "DATABASE_URL": "postgresql://localhost:5432/myapp_dev",
-    "DEBUG_MODE": "true",
-    "PORT": "3000"
+    "APP_NAME": "My Application",
+    "DEBUG": "true",
+    "DATABASE_NAME": "myapp_test",
+    "TEST_MODE": "true"
 }
 ```
 
-Load it in your application:
+**Load with environment-aware configuration:**
 
 ```swift
 let env = try EnvironmentVariables.live(
-    localEnvFile: URL(fileURLWithPath: ".env.development"),
+    environmentConfiguration: .projectRoot(
+        URL(fileURLWithPath: "/path/to/project"),
+        environment: "development"  // Loads .env + .env.development
+    ),
     requiredKeys: ["API_KEY", "DATABASE_URL"]
 )
 ```
+
+**Precedence order:** Base `.env` → Environment `.env.development` → Process environment
 
 ## Using with Dependencies
 
@@ -78,16 +107,17 @@ import EnvironmentVariables
 
 extension EnvironmentVariables: @retroactive DependencyKey {
     public static var liveValue: Self {
-        let localDevelopment: URL? = {
-            #if DEBUG
-                return URL.projectRoot.appendingPathComponent(".env.development")
-            #else
-                return nil
-            #endif
-        }()
+        #if DEBUG
+        let environment = "development"
+        #else
+        let environment: String? = nil
+        #endif
         
         return try! EnvironmentVariables.live(
-            localEnvFile: localDevelopment,
+            environmentConfiguration: .projectRoot(
+                URL.projectRoot,
+                environment: environment
+            ),
             requiredKeys: ["API_KEY", "DATABASE_URL"]
         )
     }
