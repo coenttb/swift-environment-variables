@@ -248,6 +248,44 @@ struct KeyValueFormatTest {
         #expect(env["APP_NAME"] == "Swift Environment Variables")
         #expect(env["APP_ENV"] == "json-demo")
     }
+    
+    @Test
+    func testQuotedKeysHandling() async throws {
+        let tempDir = FileManager.default.temporaryDirectory
+        let testFile = tempDir.appendingPathComponent("quoted_keys.env")
+        
+        let contentWithQuotedKeys = """
+        # Regular key
+        NORMAL_KEY=normal_value
+        
+        # Quoted keys - should be stored without quotes
+        "ENV"=development
+        'API_KEY'=secret123
+        "DATABASE_URL"=postgresql://user:pass@localhost/db
+        
+        # Mixed quotes and values
+        "PORT"="8080"
+        'HOST'='localhost'
+        """
+        
+        try contentWithQuotedKeys.write(to: testFile, atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: testFile) }
+        
+        let env = try EnvironmentVariables.live(localEnvFile: testFile)
+        
+        // Keys should be accessible without quotes
+        #expect(env["NORMAL_KEY"] == "normal_value")
+        #expect(env["ENV"] == "development")
+        #expect(env["API_KEY"] == "secret123") 
+        #expect(env["DATABASE_URL"] == "postgresql://user:pass@localhost/db")
+        #expect(env["PORT"] == "8080")
+        #expect(env["HOST"] == "localhost")
+        
+        // Quoted versions should NOT work
+        #expect(env["\"ENV\""] == nil)
+        #expect(env["'API_KEY'"] == nil)
+        #expect(env["\"DATABASE_URL\""] == nil)
+    }
 }
 
 @Suite

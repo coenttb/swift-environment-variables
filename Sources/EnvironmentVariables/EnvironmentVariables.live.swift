@@ -261,8 +261,11 @@ extension EnvironmentVariables {
                 )
             }
             
-            let key = String(trimmedLine[..<equalIndex]).trimmingCharacters(in: .whitespaces)
+            let rawKey = String(trimmedLine[..<equalIndex]).trimmingCharacters(in: .whitespaces)
             let value = String(trimmedLine[trimmedLine.index(after: equalIndex)...])
+            
+            // Parse key, handling quotes (same logic as values)
+            let key = parseValue(rawKey)
             
             // Validate key is not empty
             if key.isEmpty {
