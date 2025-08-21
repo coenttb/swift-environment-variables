@@ -196,6 +196,61 @@ struct KeyValueFormatTest {
         #expect(env["KEY2"] == "value2")
         #expect(env["KEY3"] == "value3")
     }
+    
+    @Test
+    func testInlineCommentsStripping() async throws {
+        let tempDir = FileManager.default.temporaryDirectory
+        let testFile = tempDir.appendingPathComponent("inline_comments.env")
+
+        let contentWithInlineComments = """
+        # Standard comment
+        IDENTITIES_JWT_REFRESH_EXPIRY=2592000           # 30 days
+        IDENTITIES_JWT_ACCESS_EXPIRY=900                # 15 minutes
+        TIMEOUT=30              # seconds
+        MAX_RETRIES=5          # number of attempts
+        
+        # Comments in quoted values are preserved
+        MESSAGE="Use # in quotes"  # This comment is stripped
+        FILE_PATH="C:/Users/file#1"     # The # inside quotes is kept
+        
+        # Comments without spaces
+        KEY1=value1#immediate comment
+        KEY2=value2 #space before comment
+        
+        # Edge cases
+        JUST_HASH=#
+        EMPTY_AFTER_HASH=value # 
+        """
+
+        try contentWithInlineComments.write(to: testFile, atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: testFile) }
+
+        let env = try EnvironmentVariables.live(localEnvFile: testFile)
+
+        // Test that inline comments are stripped
+        #expect(env["IDENTITIES_JWT_REFRESH_EXPIRY"] == "2592000")
+        #expect(env["IDENTITIES_JWT_ACCESS_EXPIRY"] == "900")
+        #expect(env["TIMEOUT"] == "30")
+        #expect(env["MAX_RETRIES"] == "5")
+        
+        // Test that quoted values preserve # symbols
+        #expect(env["MESSAGE"] == "Use # in quotes")
+        #expect(env["FILE_PATH"] == "C:/Users/file#1")
+        
+        // Test comments with different spacing
+        #expect(env["KEY1"] == "value1")
+        #expect(env["KEY2"] == "value2")
+        
+        // Test edge cases
+        #expect(env["JUST_HASH"] == "")
+        #expect(env["EMPTY_AFTER_HASH"] == "value")
+        
+        // Verify integer parsing works after comment stripping
+        #expect(env.int("IDENTITIES_JWT_REFRESH_EXPIRY") == 2592000)
+        #expect(env.int("IDENTITIES_JWT_ACCESS_EXPIRY") == 900)
+        #expect(env.int("TIMEOUT") == 30)
+        #expect(env.int("MAX_RETRIES") == 5)
+    }
 
     @Test
     func testKeyValueFormatWithWhitespace() async throws {

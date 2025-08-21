@@ -107,9 +107,14 @@ extension EnvironmentVariables {
     /// DATABASE_URL=sqlite:///dev.db
     /// DEBUG=true
     /// 
-    /// # Quoted values for spaces
+    /// # Inline comments are supported for unquoted values
+    /// TIMEOUT=30              # seconds
+    /// MAX_RETRIES=5          # number of attempts
+    /// 
+    /// # Quoted values for spaces (quotes protect from comment parsing)
     /// COMPANY_NAME="My Company"
     /// DESCRIPTION='App description'
+    /// MESSAGE="Use # in quotes"  # This comment is stripped, but # inside quotes is kept
     /// ```
     ///
     /// The parser automatically detects the format, trying JSON first, then falling back to KEY=VALUE format.
@@ -238,7 +243,8 @@ extension EnvironmentVariables {
     /// - KEY=VALUE pairs, one per line
     /// - Empty lines (ignored)
     /// - Comments starting with # (ignored)
-    /// - Quoted values: KEY="value with spaces"
+    /// - Inline comments after unquoted values: KEY=value # comment
+    /// - Quoted values: KEY="value with spaces" (quotes protect from comment parsing)
     /// - Unquoted values: KEY=simple_value
     /// - Whitespace trimming around keys and values
     ///
@@ -294,20 +300,53 @@ extension EnvironmentVariables {
     /// - Parameter value: The raw value string after the = sign
     /// - Returns: The parsed value with quotes removed and whitespace trimmed
     private static func parseValue(_ value: String) -> String {
-        let trimmedValue = value.trimmingCharacters(in: .whitespaces)
-
-        // Handle quoted values
-        if trimmedValue.count >= 2 {
-            if (trimmedValue.hasPrefix("\"") && trimmedValue.hasSuffix("\"")) ||
-               (trimmedValue.hasPrefix("'") && trimmedValue.hasSuffix("'")) {
-                let startIndex = trimmedValue.index(after: trimmedValue.startIndex)
-                let endIndex = trimmedValue.index(before: trimmedValue.endIndex)
-                return String(trimmedValue[startIndex..<endIndex])
+        var workingValue = value.trimmingCharacters(in: .whitespaces)
+        
+        // For unquoted values, strip inline comments first
+        if !workingValue.hasPrefix("\"") && !workingValue.hasPrefix("'") {
+            if let commentIndex = workingValue.firstIndex(of: "#") {
+                // Everything before the # is the value
+                workingValue = String(workingValue[..<commentIndex]).trimmingCharacters(in: .whitespaces)
             }
         }
 
-        // Return unquoted value as-is (already trimmed)
-        return trimmedValue
+        // Handle quoted values
+        if workingValue.count >= 2 {
+            if workingValue.hasPrefix("\"") && workingValue.hasSuffix("\"") {
+                let startIndex = workingValue.index(after: workingValue.startIndex)
+                let endIndex = workingValue.index(before: workingValue.endIndex)
+                return String(workingValue[startIndex..<endIndex])
+            } else if workingValue.hasPrefix("'") && workingValue.hasSuffix("'") {
+                let startIndex = workingValue.index(after: workingValue.startIndex)
+                let endIndex = workingValue.index(before: workingValue.endIndex)
+                return String(workingValue[startIndex..<endIndex])
+            } else if workingValue.hasPrefix("\"") || workingValue.hasPrefix("'") {
+                // Handle quoted values with inline comments after the closing quote
+                let quoteChar = workingValue.first!
+                var inQuotes = false
+                var endQuoteIndex: String.Index? = nil
+                
+                for (index, char) in workingValue.enumerated() {
+                    let strIndex = workingValue.index(workingValue.startIndex, offsetBy: index)
+                    if index == 0 {
+                        inQuotes = true
+                        continue
+                    }
+                    if char == quoteChar && inQuotes {
+                        endQuoteIndex = strIndex
+                        break
+                    }
+                }
+                
+                if let endQuoteIndex = endQuoteIndex {
+                    let startIndex = workingValue.index(after: workingValue.startIndex)
+                    return String(workingValue[startIndex..<endQuoteIndex])
+                }
+            }
+        }
+
+        // Return value as-is (already processed)
+        return workingValue
     }
 
     /// Loads environment variables based on the provided configuration.
