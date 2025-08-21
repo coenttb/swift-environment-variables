@@ -2,7 +2,7 @@
 
 A type-safe environment variable management system for Swift applications.
 
-![Version](https://img.shields.io/badge/version-0.0.1-green.svg)
+![Version](https://img.shields.io/badge/version-0.1.3-green.svg)
 ![Swift](https://img.shields.io/badge/swift-6.0-orange.svg)
 ![Platforms](https://img.shields.io/badge/platforms-iOS%20%7C%20macOS%20%7C%20tvOS%20%7C%20watchOS-lightgrey.svg)
 
