@@ -1,30 +1,66 @@
 # swift-environment-variables
 
-A type-safe environment variable management system for Swift applications.
+[![CI](https://github.com/coenttb/swift-environment-variables/workflows/CI/badge.svg)](https://github.com/coenttb/swift-environment-variables/actions/workflows/ci.yml)
+![Development Status](https://img.shields.io/badge/status-active--development-blue.svg)
 
-![Version](https://img.shields.io/badge/version-0.1.3-green.svg)
-![Swift](https://img.shields.io/badge/swift-6.0-orange.svg)
-![Platforms](https://img.shields.io/badge/platforms-iOS%20%7C%20macOS%20%7C%20tvOS%20%7C%20watchOS-lightgrey.svg)
+A type-safe environment variable management system for Swift applications with support for multiple file formats and environment-aware configuration.
+
+## Overview
+
+`swift-environment-variables` provides type-safe access to environment variables with:
+- Automatic type conversion for Int, Bool, URL, and String
+- Support for both JSON and KEY=VALUE (.env) file formats
+- Environment-aware loading with clear precedence rules
+- Integration with the Dependencies library for dependency injection
+- Required key validation at runtime
+- Comprehensive error handling and logging
 
 ## Features
 
-* **Type-safe environment access**: Access environment variables with type conversion support for Int, Bool, URL, and String
-* **Multiple file format support**: Supports both JSON and standard KEY=VALUE (.env) file formats
-* **Environment-aware loading**: Automatically loads base configuration and environment-specific overrides
-* **Layered configuration**: Clear precedence order from defaults → base files → environment files → process environment
-* **Required keys validation**: Specify and validate required environment variables at runtime
-* **Dependencies integration**: Built-in support for the Dependencies package for clean dependency injection
-* **Test support**: Includes test helpers and mock values for testing
-* **Error handling**: Comprehensive error handling with custom error types
-* **Logging integration**: Built-in logging support using Swift's Logger
+- **Type-safe access**: Dedicated methods for Int, Bool, URL conversions with automatic validation
+- **Multiple file formats**: Supports both JSON and standard KEY=VALUE (.env) file formats
+- **Environment-aware loading**: Base configuration with environment-specific overrides (.env + .env.development)
+- **Clear precedence**: Default values → base .env → environment .env → process environment
+- **Required keys validation**: Specify and validate required environment variables at initialization
+- **Dependencies integration**: Built-in DependencyKey conformance for clean dependency injection
+- **Test support**: Test values and mocking capabilities
+- **Error handling**: Custom error types with detailed failure information
+- **Logging**: Built-in logging using Swift's Logger
+
+## Installation
+
+### Swift Package Manager
+
+Add to your `Package.swift`:
+
+```swift
+dependencies: [
+    .package(url: "https://github.com/coenttb/swift-environment-variables", from: "0.1.3")
+]
+```
+
+Then add the dependency to your target:
+
+```swift
+.target(
+    name: "YourTarget",
+    dependencies: [
+        .product(name: "EnvironmentVariables", package: "swift-environment-variables")
+    ]
+)
+```
 
 ## Quick Start
 
 ### Using with Dependencies
 
-To use environment variables with [Dependencies](https://github.com/pointfreeco/swift-dependencies), conform to `DependencyKey`:
+Extend `EnvironmentVariables` to conform to `DependencyKey`:
 
 ```swift
+import Dependencies
+import EnvironmentVariables
+import Foundation
+
 extension EnvironmentVariables: @retroactive DependencyKey {
     public static var liveValue: Self {
         #if DEBUG
@@ -32,7 +68,7 @@ extension EnvironmentVariables: @retroactive DependencyKey {
         #else
         let environment: String? = nil
         #endif
-        
+
         return try! EnvironmentVariables.live(
             environmentConfiguration: .projectRoot(
                 URL.projectRoot,
@@ -42,7 +78,6 @@ extension EnvironmentVariables: @retroactive DependencyKey {
     }
 }
 
-// Helper for finding the project root
 extension URL {
     public static var projectRoot: URL {
         .init(fileURLWithPath: #filePath)
@@ -53,12 +88,6 @@ extension URL {
 }
 ```
 
-This setup:
-- Uses `@retroactive` to conform to `DependencyKey`
-- Automatically loads `.env` + `.env.development` in DEBUG builds
-- Loads only `.env` + process environment in production
-- Supports environment-specific configuration overrides
-
 Access environment variables using the `@Dependency` property wrapper:
 
 ```swift
@@ -66,13 +95,17 @@ import Dependencies
 
 struct MyFeature {
     @Dependency(\.envVars) var env
-    
+
     func configure() throws {
         guard let apiKey = env["API_KEY"] else {
             throw ConfigError.missingApiKey
         }
-        // Use apiKey...
+        let port = env.int("PORT") ?? 8080
     }
+}
+
+enum ConfigError: Error {
+    case missingApiKey
 }
 ```
 
@@ -81,7 +114,6 @@ struct MyFeature {
 ```swift
 import EnvironmentVariables
 
-// Initialize with environment-aware configuration
 let env = try EnvironmentVariables.live(
     environmentConfiguration: .projectRoot(
         URL(fileURLWithPath: "/path/to/project"),
@@ -90,18 +122,15 @@ let env = try EnvironmentVariables.live(
     requiredKeys: ["APP_SECRET", "DATABASE_URL"]
 )
 
-// Access values with type safety
 let port: Int? = env.int("PORT")
 let isDevelopment: Bool? = env.bool("DEVELOPMENT")
 let databaseUrl: URL? = env.url("DATABASE_URL")
 let apiKey: String? = env["API_KEY"]
 ```
 
-### Environment Configuration System
+## Configuration Strategies
 
-The package supports multiple configuration strategies with clear precedence:
-
-#### Project-Based Loading (Recommended)
+### Project Root Configuration (Recommended)
 
 Create environment files in your project root:
 
@@ -112,7 +141,6 @@ APP_NAME=My Application
 DEBUG=false
 DATABASE_HOST=localhost
 DATABASE_PORT=5432
-CACHE_TTL=3600
 ```
 
 **`.env.development` (Development overrides):**
@@ -120,20 +148,9 @@ CACHE_TTL=3600
 # Development-specific overrides
 DEBUG=true
 DATABASE_NAME=myapp_dev
-CACHE_TTL=60
-DEV_TOOLS_ENABLED=true
 ```
 
-**`.env.production` (Production overrides):**
-```bash
-# Production-specific overrides
-DEBUG=false
-DATABASE_NAME=myapp_prod
-CACHE_TTL=7200
-ENABLE_METRICS=true
-```
-
-#### Loading with Precedence
+Load with environment-specific overrides:
 
 ```swift
 let env = try EnvironmentVariables.live(
@@ -144,15 +161,15 @@ let env = try EnvironmentVariables.live(
 )
 ```
 
-**Precedence Order (lowest to highest):**
+**Precedence order (lowest to highest):**
 1. Default values (empty by default)
 2. Base `.env` file
 3. Environment-specific file (e.g., `.env.development`)
 4. Process environment variables
 
-#### Single File Loading
+### Single File Configuration
 
-For simpler use cases, load a single environment file:
+For simpler use cases:
 
 ```swift
 let env = try EnvironmentVariables.live(
@@ -162,18 +179,39 @@ let env = try EnvironmentVariables.live(
 )
 ```
 
-#### Supported File Formats
+### Process Environment Only
 
-Both **KEY=VALUE** (.env) and **JSON** formats are supported:
+Load only from system environment:
 
-**KEY=VALUE format:**
+```swift
+let env = try EnvironmentVariables.live(
+    environmentConfiguration: .none
+)
+```
+
+## File Formats
+
+### KEY=VALUE Format
+
+Standard .env file format with comments and quoted values:
+
 ```bash
+# API Configuration
 API_KEY=my-secret-key
 DEBUG=true
 DATABASE_URL=postgresql://user:pass@localhost:5432/db
+
+# Inline comments for unquoted values
+TIMEOUT=30              # seconds
+MAX_RETRIES=5          # number of attempts
+
+# Quoted values for spaces
+COMPANY_NAME="My Company"
+MESSAGE="Use # in quotes"  # This comment is stripped
 ```
 
-**JSON format:**
+### JSON Format
+
 ```json
 {
     "API_KEY": "my-secret-key",
@@ -182,53 +220,32 @@ DATABASE_URL=postgresql://user:pass@localhost:5432/db
 }
 ```
 
-## Configuration Options
+The parser automatically detects the format, trying JSON first, then falling back to KEY=VALUE format.
 
-The `EnvironmentConfiguration` enum provides three loading strategies:
+## Type-Safe Access
 
-### `.none`
-Load only from process environment variables:
+### Built-in Type Conversion
+
 ```swift
-let env = try EnvironmentVariables.live(
-    environmentConfiguration: .none
-)
+// String access (default)
+let apiKey: String? = env["API_KEY"]
+
+// Integer conversion
+let port: Int? = env.int("PORT")
+let maxConnections: Int? = env.int("MAX_CONNECTIONS")
+
+// Boolean conversion (supports true/false, yes/no, 1/0)
+let isDebug: Bool? = env.bool("DEBUG")
+let enableLogging: Bool? = env.bool("ENABLE_LOGGING")
+
+// URL conversion
+let baseUrl: URL? = env.url("BASE_URL")
+let databaseUrl: URL? = env.url("DATABASE_URL")
 ```
 
-### `.singleFile(URL)`
-Load from a single environment file:
-```swift
-let env = try EnvironmentVariables.live(
-    environmentConfiguration: .singleFile(
-        URL(fileURLWithPath: "/path/to/.env.development")
-    )
-)
-```
+### Custom Property Extensions
 
-### `.projectRoot(URL, environment: String?)`
-Load base configuration with optional environment-specific overrides:
-```swift
-// Load only .env
-let env = try EnvironmentVariables.live(
-    environmentConfiguration: .projectRoot(
-        URL(fileURLWithPath: "/path/to/project"),
-        environment: nil
-    )
-)
-
-// Load .env + .env.staging
-let env = try EnvironmentVariables.live(
-    environmentConfiguration: .projectRoot(
-        URL(fileURLWithPath: "/path/to/project"),
-        environment: "staging"
-    )
-)
-```
-
-## Advanced Usage
-
-### Adding Type-Safe Property Access
-
-While dictionary-style access (`env["KEY"]`) is always available, you can add strongly-typed property access by extending `EnvironmentVariables`:
+Add strongly-typed property access by extending `EnvironmentVariables`:
 
 ```swift
 extension EnvironmentVariables {
@@ -236,12 +253,12 @@ extension EnvironmentVariables {
         get { self["APP_SECRET"]! }
         set { self["APP_SECRET"] = newValue }
     }
-    
+
     public var baseUrl: URL {
         get { URL(string: self["BASE_URL"]!)! }
         set { self["BASE_URL"] = newValue.absoluteString }
     }
-    
+
     public var port: Int {
         get { Int(self["PORT"]!)! }
         set { self["PORT"] = String(newValue) }
@@ -249,9 +266,9 @@ extension EnvironmentVariables {
 }
 ```
 
-### Optional Variables
+### Optional Properties
 
-For optional environment variables, use optional types:
+For optional environment variables:
 
 ```swift
 import Logging
@@ -261,7 +278,7 @@ extension EnvironmentVariables {
         get { self["LOG_LEVEL"].flatMap { Logger.Level(rawValue: $0) } }
         set { self["LOG_LEVEL"] = newValue?.rawValue }
     }
-    
+
     public var httpsRedirect: Bool? {
         get { self.bool("HTTPS_REDIRECT") }
         set { self["HTTPS_REDIRECT"] = newValue.map { $0 ? "true" : "false" } }
@@ -271,64 +288,70 @@ extension EnvironmentVariables {
 
 ### Array Variables
 
-For environment variables that contain comma-separated values:
+For comma-separated values:
 
 ```swift
 extension EnvironmentVariables {
     public var allowedHosts: [String]? {
-        get { 
+        get {
             self["ALLOWED_HOSTS"]?
                 .components(separatedBy: ",")
-                .map { $0.trimmingCharacters(in: .whitespaces) } 
+                .map { $0.trimmingCharacters(in: .whitespaces) }
         }
         set { self["ALLOWED_HOSTS"] = newValue?.joined(separator: ",") }
     }
 }
 ```
 
-This approach provides:
-- Type safety: Variables are converted to their proper Swift types
-- Auto-completion: Access environment variables using dot syntax
-- Default values: Can specify defaults for optional variables
-- Validation: Add validation logic in the getter if needed
+## Required Keys Validation
 
-## Installation
-
-You can add `swift-environment-variables` to an Xcode project by adding it as a package dependency.
-
-1. From the **File** menu, select **Add Packages...**
-2. Enter "https://github.com/coenttb/swift-environment-variables" into the package repository URL text field
-3. Link the package to your target
-
-For a Swift Package Manager project, add the following to your `Package.swift` file:
+Specify required keys that must be present:
 
 ```swift
-dependencies: [
-    .package(url: "https://github.com/coenttb/swift-environment-variables", from: "0.0.1")
-]
+do {
+    let env = try EnvironmentVariables.live(
+        environmentConfiguration: .projectRoot(
+            URL(fileURLWithPath: "/path/to/project"),
+            environment: "production"
+        ),
+        requiredKeys: ["API_KEY", "DATABASE_URL", "APP_SECRET"]
+    )
+} catch EnvironmentVariables.Error.missingRequiredKeys(let keys) {
+    print("Missing required keys: \(keys)")
+}
 ```
 
-## Related projects
+## Error Handling
 
-* [coenttb/swift-web](https://www.github.com/coenttb/swift-web): Modular tools to simplify web development in Swift
-* [coenttb/coenttb-com-server](https://www.github.com/coenttb/coenttb-com-server): The backend server for coenttb.com that uses EnvironmentVariables.
+The library provides two error types:
 
-## Feedback is much appreciated!
+### EnvironmentVariables.Error
 
-If you're working on your own Swift project, feel free to learn, fork, and contribute.
+```swift
+public enum Error: Swift.Error {
+    case missingRequiredKeys([String])
+}
+```
 
-Got thoughts? Found something you love? Something you hate? Let me know! Your feedback helps make this project better for everyone. Open an issue or start a discussion—I'm all ears.
+### EnvironmentVariables.LiveError
 
-> [Subscribe to my newsletter](http://coenttb.com/en/newsletter/subscribe)
->
-> [Follow me on X](http://x.com/coenttb)
-> 
-> [Link on Linkedin](https://www.linkedin.com/in/tenthijeboonkkamp)
+```swift
+public enum LiveError: Swift.Error {
+    case initializationFailed(underlying: Swift.Error)
+    case invalidEnvironment(reason: String)
+}
+```
 
-## Acknowledgements
-This project builds upon foundational work by Point-Free (Brandon Williams and Stephen Celis). This package is inspired by their approach on `pointfreeco`.
+## Related Packages
+
+- [coenttb/coenttb-com-server](https://github.com/coenttb/coenttb-com-server): The backend server for coenttb.com
+- [coenttb/swift-web](https://github.com/coenttb/swift-web): Modular tools for web development in Swift
+- [pointfreeco/swift-dependencies](https://github.com/pointfreeco/swift-dependencies): A dependency management library
 
 ## License
 
-This project is licensed by coenttb under the **Apache 2.0 License**.
-See [LICENSE](LICENSE) for details.
+This project is licensed under the Apache License 2.0. See [LICENSE](LICENSE) for details.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit issues or pull requests.
