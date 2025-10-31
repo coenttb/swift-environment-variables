@@ -208,7 +208,8 @@ struct ReadmeVerificationTests {
     )
 
     // Should load from process environment
-    #expect(env["PATH"] != nil)  // PATH should exist in process environment
+    // On Unix-like systems, PATH is uppercase; on Windows it might be Path
+    #expect(env["PATH"] != nil || env["Path"] != nil)  // PATH/Path should exist in process environment
   }
 
   // MARK: - Type-Safe Access
