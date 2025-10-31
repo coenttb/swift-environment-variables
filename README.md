@@ -13,7 +13,7 @@ A type-safe environment variable management system for Swift applications with s
 - Environment-aware loading with clear precedence rules
 - Integration with the Dependencies library for dependency injection
 - Required key validation at runtime
-- Comprehensive error handling and logging
+- Error handling and logging
 
 ## Features
 
