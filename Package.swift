@@ -32,7 +32,7 @@ let package = Package(
         .library(name: .environmentVariables, targets: [.environmentVariables])
     ],
     dependencies: [
-        .package(url: "https://github.com/pointfreeco/swift-dependencies", from: "1.10.0"),
+        .package(url: "https://github.com/pointfreeco/swift-dependencies", branch: "main"),
         .package(url: "https://github.com/apple/swift-log", from: "1.6.4")
     ],
     targets: [
