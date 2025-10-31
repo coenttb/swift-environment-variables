@@ -344,9 +344,9 @@ public enum LiveError: Swift.Error {
 
 ## Related Packages
 
-- [coenttb/coenttb-com-server](https://github.com/coenttb/coenttb-com-server): The backend server for coenttb.com
-- [coenttb/swift-web](https://github.com/coenttb/swift-web): Modular tools for web development in Swift
-- [pointfreeco/swift-dependencies](https://github.com/pointfreeco/swift-dependencies): A dependency management library
+- [coenttb/coenttb-com-server](https://github.com/coenttb/coenttb-com-server) - Production server for coenttb.com built with Boiler.
+- [coenttb/swift-web](https://github.com/coenttb/swift-web) - A Swift package with tools to simplify web development.
+- [pointfreeco/swift-dependencies](https://github.com/pointfreeco/swift-dependencies) - A dependency management library inspired by SwiftUI's "environment."
 
 ## License
 
