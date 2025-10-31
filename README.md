@@ -344,9 +344,18 @@ public enum LiveError: Swift.Error {
 
 ## Related Packages
 
-- [coenttb/coenttb-com-server](https://github.com/coenttb/coenttb-com-server) - Production server for coenttb.com built with Boiler.
-- [coenttb/swift-web](https://github.com/coenttb/swift-web) - A Swift package with tools to simplify web development.
-- [pointfreeco/swift-dependencies](https://github.com/pointfreeco/swift-dependencies) - A dependency management library inspired by SwiftUI's "environment."
+### Used By
+
+- [coenttb-web](https://github.com/coenttb/coenttb-web): A Swift package with tools for web development building on swift-web.
+- [swift-mailgun-live](https://github.com/coenttb/swift-mailgun-live): A Swift package with live implementations for Mailgun.
+- [swift-records](https://github.com/coenttb/swift-records): The Swift library for PostgreSQL database operations.
+- [swift-server-foundation](https://github.com/coenttb/swift-server-foundation): A Swift package with tools to simplify server development.
+- [swift-stripe-live](https://github.com/coenttb/swift-stripe-live): A Swift package with live implementations for the Stripe API.
+
+### Third-Party Dependencies
+
+- [pointfreeco/swift-dependencies](https://github.com/pointfreeco/swift-dependencies): A dependency management library for controlling dependencies in Swift.
+- [apple/swift-log](https://github.com/apple/swift-log): A Logging API for Swift.
 
 ## License
 
