@@ -343,7 +343,7 @@ extension EnvironmentVariables {
                 // Handle quoted values with inline comments after the closing quote
                 let quoteChar = workingValue.first!
                 var inQuotes = false
-                var endQuoteIndex: String.Index? = nil
+                var endQuoteIndex: String.Index?
 
                 for (index, char) in workingValue.enumerated() {
                     let strIndex = workingValue.index(workingValue.startIndex, offsetBy: index)

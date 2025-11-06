@@ -36,7 +36,7 @@ struct LiveTest {
             $0.envVars = try EnvironmentVariables(
                 dictionary: [
                     "COMPANY_NAME": "Custom Company",
-                    "COMPANY_INFO_EMAIL_ADDRESS": "custom@example.com",
+                    "COMPANY_INFO_EMAIL_ADDRESS": "custom@example.com"
                 ],
                 requiredKeys: []
             )
@@ -223,7 +223,7 @@ struct KeyValueFormatTest {
 
             # Edge cases
             JUST_HASH=#
-            EMPTY_AFTER_HASH=value # 
+            EMPTY_AFTER_HASH=value #
             """
 
         try contentWithInlineComments.write(to: testFile, atomically: true, encoding: .utf8)

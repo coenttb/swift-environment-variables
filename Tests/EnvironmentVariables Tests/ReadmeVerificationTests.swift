@@ -15,8 +15,7 @@ import Testing
 
 // Extension from README (lines 64-88)
 extension EnvironmentVariables {
-    fileprivate static func makeTestLiveValue(projectRoot: URL, environment: String?) throws -> Self
-    {
+    fileprivate static func makeTestLiveValue(projectRoot: URL, environment: String?) throws -> Self {
         try EnvironmentVariables.live(
             environmentConfiguration: .projectRoot(
                 projectRoot,
@@ -233,7 +232,7 @@ struct ReadmeVerificationTests {
                 "DEBUG": "true",
                 "ENABLE_LOGGING": "false",
                 "BASE_URL": "https://example.com",
-                "DATABASE_URL": "postgresql://localhost/db",
+                "DATABASE_URL": "postgresql://localhost/db"
             ],
             requiredKeys: []
         )
@@ -262,7 +261,7 @@ struct ReadmeVerificationTests {
             dictionary: [
                 "APP_SECRET": "secret123",
                 "BASE_URL": "https://api.example.com",
-                "PORT": "3000",
+                "PORT": "3000"
             ],
             requiredKeys: []
         )
@@ -286,7 +285,7 @@ struct ReadmeVerificationTests {
         var env = try EnvironmentVariables(
             dictionary: [
                 "LOG_LEVEL": "debug",
-                "HTTPS_REDIRECT": "true",
+                "HTTPS_REDIRECT": "true"
             ],
             requiredKeys: []
         )
@@ -362,8 +361,7 @@ struct ReadmeVerificationTests {
         } catch EnvironmentVariables.LiveError.initializationFailed(let underlying) {
             // Unwrap the LiveError to get the actual missing keys error
             if let missingKeysError = underlying as? EnvironmentVariables.Error,
-                case .missingRequiredKeys(let keys) = missingKeysError
-            {
+                case .missingRequiredKeys(let keys) = missingKeysError {
                 #expect(keys.contains("MISSING_KEY"))
             } else {
                 Issue.record("Expected missingRequiredKeys error, got: \(underlying)")

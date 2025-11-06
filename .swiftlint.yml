@@ -3,26 +3,27 @@ disabled_rules:
   - identifier_name
   - nesting
   - redundant_discardable_let  # Preserve 'let _ =' in result builder contexts (required for Swift 6.0+)
+  - force_unwrapping  # Common in tests
+  - force_try  # Common in tests
+  - strict_fileprivate  # Allowed in tests
+  - file_length  # Tests can be long
+  - type_body_length  # Test types can be long
+  - empty_string  # Sometimes == "" is clearer than isEmpty
 
 opt_in_rules:
   - empty_count
   - explicit_init
   - sorted_imports
   - force_cast
-  - force_try
-  - force_unwrapping
   - closure_spacing
   - operator_usage_whitespace
   - private_outlet
   - redundant_nil_coalescing
-  - unused_capture_list
-  - empty_string
   - explicit_enum_raw_value
   - literal_expression_end_indentation
   - single_test_class
   - sorted_first_last
   - vertical_whitespace
-  - strict_fileprivate
   - legacy_random
   - no_extension_access_modifier
   - colon
